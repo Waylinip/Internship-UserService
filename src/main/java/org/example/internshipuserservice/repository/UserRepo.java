@@ -15,8 +15,12 @@ public interface UserRepo extends JpaRepository<User, Long>, JpaSpecificationExe
 
     Optional<User> findByEmail(String email);
 
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.cardList WHERE u.id = :id")
-    Optional<User> findUserByIdWithCards(@Param("id") Long id);
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE User u SET u.name = :name, u.surname = :surname, u.email = :email WHERE u.id = :id")
+    int updateUser(@Param("id") Long id,
+                   @Param("name")String name,
+                   @Param("surname") String surname,
+                   @Param("email") String email);
 
     @Modifying(clearAutomatically = true)
     @Query("UPDATE User u SET u.active = :active WHERE u.id = :id")

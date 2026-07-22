@@ -14,7 +14,7 @@ import java.util.List;
 
 public interface PaymentCardRepo extends JpaRepository<PaymentCard, Long>, JpaSpecificationExecutor<PaymentCard> {
 
-    Page<PaymentCard> findByUserId(Long userId, Pageable pageable);
+    List<PaymentCard> findAllByUserId(Long userId);
 
     @Query(value = """
             SELECT COUNT(*)
