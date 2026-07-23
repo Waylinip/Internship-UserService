@@ -7,6 +7,8 @@ import org.example.internshipuserservice.exception.NotFoundException;
 import org.example.internshipuserservice.mapper.UserMapper;
 import org.example.internshipuserservice.repository.UserRepo;
 import org.example.internshipuserservice.specification.UserSpecification;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -74,6 +76,7 @@ public class UserService {
     }
 
     @Transactional
+    @CacheEvict(value = "userWithCards", key = "#id")
     public UserDTO changeStatus(Long id, boolean active) {
         if (id == null) {
             throw new IllegalArgumentException(USER_ID_EXCEPTION);
@@ -89,6 +92,7 @@ public class UserService {
     }
 
     @Transactional
+    @CacheEvict(value = "userWithCards", key = "#id")
     public UserDTO deleteUser(Long id) {
         if (id == null) {
             throw new IllegalArgumentException(USER_ID_EXCEPTION);
@@ -100,6 +104,7 @@ public class UserService {
 
 
     @Transactional
+    @CacheEvict(value = "userWithCards", key = "#id")
     public UserDTO updateUser(Long id, UserDTO userDTO) {
         if (id == null) {
             throw new IllegalArgumentException(USER_ID_EXCEPTION);
@@ -118,6 +123,7 @@ public class UserService {
         return userMapper.toDto(user);
     }
 
+    @Cacheable(value = "userWithCards", key = "#id")
     public UserWithCardsDTO getUserWithCards(Long id) {
         User user = userRepo.findByIdWithCards(id)
                 .orElseThrow(() -> new NotFoundException("User with id " + id + " not found"));

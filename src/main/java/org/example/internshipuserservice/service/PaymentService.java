@@ -9,6 +9,7 @@ import org.example.internshipuserservice.mapper.PaymentCardMapper;
 import org.example.internshipuserservice.repository.PaymentCardRepo;
 import org.example.internshipuserservice.repository.UserRepo;
 import org.example.internshipuserservice.specification.PaymentCardSpecification;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -38,6 +39,7 @@ public class PaymentService {
     }
 
     @Transactional
+    @CacheEvict(value = "userWithCards", key = "#result.userId")
     public PaymentCardDTO create(PaymentCardDTO cardDTO) {
         if (cardDTO == null) {
             throw new IllegalArgumentException(CARD_DTO_EXCEPTION);
@@ -75,6 +77,7 @@ public class PaymentService {
     }
 
     @Transactional
+    @CacheEvict(value = "userWithCards", key = "#result.userId")
     public PaymentCardDTO updateStatus(Long id, boolean active) {
         if (id == null) {
             throw new IllegalArgumentException(CARD_ID_EXCEPTION);
@@ -99,6 +102,7 @@ public class PaymentService {
     }
 
     @Transactional
+    @CacheEvict(value = "userWithCards", key = "#result.userId")
     public PaymentCardDTO delete(Long id) {
         if (id == null) {
             throw new IllegalArgumentException(CARD_ID_EXCEPTION);
@@ -113,6 +117,7 @@ public class PaymentService {
     }
 
     @Transactional
+    @CacheEvict(value = "userWithCards", key = "#result.userId")
     public PaymentCardDTO update(Long id, PaymentCardDTO cardDTO) {
         if (id == null) {
             throw new IllegalArgumentException(CARD_ID_EXCEPTION);
