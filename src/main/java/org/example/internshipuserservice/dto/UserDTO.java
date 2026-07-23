@@ -21,7 +21,7 @@ public class UserDTO {
 
     @NotNull
     @Past
-    private LocalDate birthDate;
+    private LocalDate birthdate;
 
     @NotBlank
     @Email

@@ -3,6 +3,8 @@ package org.example.internshipuserservice.service;
 import org.example.internshipuserservice.dto.PaymentCardDTO;
 import org.example.internshipuserservice.entity.PaymentCard;
 import org.example.internshipuserservice.entity.User;
+import org.example.internshipuserservice.exception.CardLimitExceededException;
+import org.example.internshipuserservice.exception.NotFoundException;
 import org.example.internshipuserservice.mapper.PaymentCardMapper;
 import org.example.internshipuserservice.repository.PaymentCardRepo;
 import org.example.internshipuserservice.repository.UserRepo;
@@ -18,6 +20,13 @@ import java.util.stream.Collectors;
 
 @Service
 public class PaymentService {
+
+    private static final String CARD_NOT_FOUND = "PaymentCard not found with id: ";
+    private static final String CARD_ID_EXCEPTION = "Card id can not be null";
+    private static final String CARD_DTO_EXCEPTION = "Card DTO can not be null";
+    private static final String USER_ID_EXCEPTION = "User id can not be null";
+    private static final String USER_NOT_FOUND = "User not found with id: ";
+
     private final PaymentCardRepo paymentCardRepo;
     private final PaymentCardMapper cardMapper;
     private final UserRepo userRepo;
@@ -31,19 +40,19 @@ public class PaymentService {
     @Transactional
     public PaymentCardDTO create(PaymentCardDTO cardDTO) {
         if (cardDTO == null) {
-            throw new IllegalArgumentException("Card DTO can not be null");
+            throw new IllegalArgumentException(CARD_DTO_EXCEPTION);
         }
         if (cardDTO.getUserId() == null) {
-            throw new IllegalArgumentException("User ID can not be null");
+            throw new IllegalArgumentException(USER_ID_EXCEPTION);
         }
 
         long count = paymentCardRepo.countCards(cardDTO.getUserId());
         if (count >= 5) {
-            throw new IllegalStateException("User already has 5 payment cards. Limit reached!");
+            throw new CardLimitExceededException("User with id " + cardDTO.getUserId() + " already has 5 payment cards");
         }
 
         User user = userRepo.findById(cardDTO.getUserId())
-                .orElseThrow(() -> new RuntimeException("User with id " + cardDTO.getUserId() + " not found"));
+                .orElseThrow(() -> new NotFoundException(USER_NOT_FOUND + cardDTO.getUserId()));
 
         PaymentCard card = cardMapper.toEntity(cardDTO);
         card.setUser(user);
@@ -54,9 +63,9 @@ public class PaymentService {
 
     public PaymentCardDTO findById(Long id) {
         if (id == null) {
-            throw new IllegalArgumentException("Id can not be null");
+            throw new IllegalArgumentException(CARD_ID_EXCEPTION);
         }
-        return cardMapper.toDTO(paymentCardRepo.findById(id).orElseThrow(() -> new RuntimeException("Card not found")));
+        return cardMapper.toDTO(paymentCardRepo.findById(id).orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id)));
     }
 
     public Page<PaymentCardDTO> findAll(String name, String surname, Pageable pageable) {
@@ -68,21 +77,22 @@ public class PaymentService {
     @Transactional
     public PaymentCardDTO updateStatus(Long id, boolean active) {
         if (id == null) {
-            throw new IllegalArgumentException("Id cannot be null");
+            throw new IllegalArgumentException(CARD_ID_EXCEPTION);
         }
 
         if (paymentCardRepo.changeStatus(id, active) == 0) {
-            throw new RuntimeException("Card not found");
+            throw new NotFoundException(CARD_NOT_FOUND + id);
         }
+
 
         return paymentCardRepo.findById(id)
                 .map(cardMapper::toDTO)
-                .orElseThrow(() -> new RuntimeException("Card not found"));
+                .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
     }
 
     public List<PaymentCardDTO> findAllByUserId(Long userId) {
         if (userId == null) {
-            throw new IllegalArgumentException("User ID can not be null");
+            throw new IllegalArgumentException(USER_ID_EXCEPTION);
         }
         List<PaymentCard> cards = paymentCardRepo.findAllByUserId(userId);
         return cards.stream().map(cardMapper::toDTO).collect(Collectors.toList());
@@ -91,11 +101,11 @@ public class PaymentService {
     @Transactional
     public PaymentCardDTO delete(Long id) {
         if (id == null) {
-            throw new IllegalArgumentException("Id can not be null");
+            throw new IllegalArgumentException(CARD_ID_EXCEPTION);
         }
 
         PaymentCard paymentCard = paymentCardRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Card not found"));
+                .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
 
         paymentCardRepo.delete(paymentCard);
 
@@ -104,17 +114,20 @@ public class PaymentService {
 
     @Transactional
     public PaymentCardDTO update(Long id, PaymentCardDTO cardDTO) {
-        if (id == null || cardDTO == null) {
-            throw new IllegalArgumentException("Id and Card DTO can not be null");
+        if (id == null) {
+            throw new IllegalArgumentException(CARD_ID_EXCEPTION);
+        }
+        if (cardDTO == null) {
+            throw new IllegalArgumentException(CARD_DTO_EXCEPTION);
         }
 
         PaymentCard card = paymentCardRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Card not found"));
+                .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
 
         card.setNumber(cardDTO.getNumber());
         card.setHolder(cardDTO.getHolder());
         card.setExpirationDate(cardDTO.getExpirationDate());
-
+        paymentCardRepo.save(card);
         return cardMapper.toDTO(card);
     }
 
