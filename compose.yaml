@@ -1,1 +1,39 @@
-services: { }
+services:
+  app:
+    build: .
+    container_name: user-service-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: user-service-db
+      DB_USERNAME: user_admin
+      DB_PASSWORD: 33563356
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: user-service-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: user-service-db
+      POSTGRES_USER: user_admin
+      POSTGRES_PASSWORD: 33563356
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: user-service-redis
+    ports:
+      - "6380:6379"
+
+volumes:
+  postgres_data:
