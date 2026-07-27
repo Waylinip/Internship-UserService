@@ -31,6 +31,7 @@ public class PaymentService {
     private static final String CARD_DTO_EXCEPTION = "Card DTO can not be null";
     private static final String USER_ID_EXCEPTION = "User id can not be null";
     private static final String USER_NOT_FOUND = "User not found with id: ";
+    private static final String CARD_NUMBER_EXISTS = "Card with this number already exists";
 
     private final PaymentCardRepo paymentCardRepo;
     private final PaymentCardMapper cardMapper;
@@ -61,6 +62,12 @@ public class PaymentService {
                     log.warn("user {} not found", cardDTO.getUserId());
                     return new NotFoundException(USER_NOT_FOUND + cardDTO.getUserId());
                 });
+
+        if (paymentCardRepo.existsByNumber(cardDTO.getNumber())) {
+            log.warn("card number already exists");
+            throw new IllegalArgumentException(CARD_NUMBER_EXISTS);
+        }
+
 
         PaymentCard card = cardMapper.toEntity(cardDTO);
         card.setUser(user);
