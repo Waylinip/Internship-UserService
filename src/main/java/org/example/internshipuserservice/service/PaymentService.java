@@ -1,5 +1,7 @@
 package org.example.internshipuserservice.service;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.internshipuserservice.dto.PaymentCardDTO;
 import org.example.internshipuserservice.entity.PaymentCard;
 import org.example.internshipuserservice.entity.User;
@@ -20,6 +22,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class PaymentService {
 
     private static final String CARD_NOT_FOUND = "PaymentCard not found with id: ";
@@ -32,45 +36,54 @@ public class PaymentService {
     private final PaymentCardMapper cardMapper;
     private final UserRepo userRepo;
 
-    public PaymentService(PaymentCardRepo paymentCardRepo, PaymentCardMapper cardMapper, UserRepo userRepo) {
-        this.paymentCardRepo = paymentCardRepo;
-        this.cardMapper = cardMapper;
-        this.userRepo = userRepo;
-    }
-
     @Transactional
     @CacheEvict(value = "userWithCards", key = "#result.userId")
     public PaymentCardDTO create(PaymentCardDTO cardDTO) {
         if (cardDTO == null) {
+            log.warn("cardDTO is null");
             throw new IllegalArgumentException(CARD_DTO_EXCEPTION);
         }
         if (cardDTO.getUserId() == null) {
+            log.warn("userId is null");
             throw new IllegalArgumentException(USER_ID_EXCEPTION);
         }
 
+        log.info("creating card for user {}", cardDTO.getUserId());
+
         long count = paymentCardRepo.countCards(cardDTO.getUserId());
         if (count >= 5) {
+            log.warn("user {} already has 5 cards", cardDTO.getUserId());
             throw new CardLimitExceededException("User with id " + cardDTO.getUserId() + " already has 5 payment cards");
         }
 
         User user = userRepo.findById(cardDTO.getUserId())
-                .orElseThrow(() -> new NotFoundException(USER_NOT_FOUND + cardDTO.getUserId()));
+                .orElseThrow(() -> {
+                    log.warn("user {} not found", cardDTO.getUserId());
+                    return new NotFoundException(USER_NOT_FOUND + cardDTO.getUserId());
+                });
 
         PaymentCard card = cardMapper.toEntity(cardDTO);
         card.setUser(user);
 
         PaymentCard savedCard = paymentCardRepo.save(card);
+        log.info("card {} created for user {}", savedCard.getId(), cardDTO.getUserId());
         return cardMapper.toDTO(savedCard);
     }
 
     public PaymentCardDTO findById(Long id) {
         if (id == null) {
+            log.warn("card id is null");
             throw new IllegalArgumentException(CARD_ID_EXCEPTION);
         }
-        return cardMapper.toDTO(paymentCardRepo.findById(id).orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id)));
+        log.debug("fetching card {}", id);
+        return cardMapper.toDTO(paymentCardRepo.findById(id).orElseThrow(() -> {
+            log.warn("card {} not found", id);
+            return new NotFoundException(CARD_NOT_FOUND + id);
+        }));
     }
 
     public Page<PaymentCardDTO> findAll(String name, String surname, Pageable pageable) {
+        log.debug("fetching cards, name={}, surname={}, page={}", name, surname, pageable);
         Specification<PaymentCard> specification = PaymentCardSpecification.filter(name, surname);
         return paymentCardRepo.findAll(specification, pageable)
                 .map(cardMapper::toDTO);
@@ -80,13 +93,16 @@ public class PaymentService {
     @CacheEvict(value = "userWithCards", key = "#result.userId")
     public PaymentCardDTO updateStatus(Long id, boolean active) {
         if (id == null) {
+            log.warn("card id is null");
             throw new IllegalArgumentException(CARD_ID_EXCEPTION);
         }
 
-        if (paymentCardRepo.changeStatus(id, active) == 0) {
+        log.info("card {} status -> {}", id, active);
+        int updated = paymentCardRepo.changeStatus(id, active);
+        if (updated == 0) {
+            log.warn("card {} not found", id);
             throw new NotFoundException(CARD_NOT_FOUND + id);
         }
-
 
         return paymentCardRepo.findById(id)
                 .map(cardMapper::toDTO)
@@ -95,8 +111,11 @@ public class PaymentService {
 
     public List<PaymentCardDTO> findAllByUserId(Long userId) {
         if (userId == null) {
+            log.warn("userId is null");
             throw new IllegalArgumentException(USER_ID_EXCEPTION);
         }
+
+        log.debug("fetching cards for user {}", userId);
         List<PaymentCard> cards = paymentCardRepo.findAllByUserId(userId);
         return cards.stream().map(cardMapper::toDTO).collect(Collectors.toList());
     }
@@ -105,14 +124,19 @@ public class PaymentService {
     @CacheEvict(value = "userWithCards", key = "#result.userId")
     public PaymentCardDTO delete(Long id) {
         if (id == null) {
+            log.warn("card id is null");
             throw new IllegalArgumentException(CARD_ID_EXCEPTION);
         }
 
         PaymentCard paymentCard = paymentCardRepo.findById(id)
-                .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
+                .orElseThrow(() -> {
+                    log.warn("card {} not found", id);
+                    return new NotFoundException(CARD_NOT_FOUND + id);
+                });
 
         paymentCardRepo.delete(paymentCard);
 
+        log.info("card {} deleted", id);
         return cardMapper.toDTO(paymentCard);
     }
 
@@ -120,15 +144,21 @@ public class PaymentService {
     @CacheEvict(value = "userWithCards", key = "#result.userId")
     public PaymentCardDTO update(Long id, PaymentCardDTO cardDTO) {
         if (id == null) {
+            log.warn("card id is null");
             throw new IllegalArgumentException(CARD_ID_EXCEPTION);
         }
         if (cardDTO == null) {
+            log.warn("cardDTO is null, id={}", id);
             throw new IllegalArgumentException(CARD_DTO_EXCEPTION);
         }
 
         PaymentCard card = paymentCardRepo.findById(id)
-                .orElseThrow(() -> new NotFoundException(CARD_NOT_FOUND + id));
+                .orElseThrow(() -> {
+                    log.warn("card {} not found", id);
+                    return new NotFoundException(CARD_NOT_FOUND + id);
+                });
 
+        log.info("updating card {}", id);
         card.setNumber(cardDTO.getNumber());
         card.setHolder(cardDTO.getHolder());
         card.setExpirationDate(cardDTO.getExpirationDate());
