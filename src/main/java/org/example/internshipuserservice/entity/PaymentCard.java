@@ -25,7 +25,6 @@ public class PaymentCard extends Audit{
     private User user;
 
     @Column(nullable = false, unique = true)
-
     private String number;
 
     @Column(nullable = false)
