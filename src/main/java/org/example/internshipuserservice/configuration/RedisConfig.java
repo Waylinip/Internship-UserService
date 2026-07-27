@@ -1,5 +1,6 @@
 package org.example.internshipuserservice.configuration;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +17,9 @@ import java.time.Duration;
 @EnableCaching
 public class RedisConfig {
 
+    @Value("${cache.ttl-minutes:20}")
+
+    private long cacheTtlMinutes;
     @Bean
     public RedisTemplate<String, Object> redisTemplate(LettuceConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
@@ -31,7 +35,7 @@ public class RedisConfig {
     @Bean
     public RedisCacheManager redisCacheManager(LettuceConnectionFactory connectionFactory) {
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(20))
+                .entryTtl(Duration.ofMinutes(cacheTtlMinutes))
                 .disableCachingNullValues()
                 .serializeKeysWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(RedisSerializer.string()))
