@@ -25,6 +25,9 @@ public class User extends Audit {
     @EqualsAndHashCode.Include
     private Long id;
 
+    @Column(name = "auth_user_id", nullable = false, unique = true)
+    private Long authUserId;
+
     @Column(nullable = false)
     @ToString.Include
     private String name;

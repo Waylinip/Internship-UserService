@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 5-add-auth-user-id
+      author: daniil
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: auth_user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+
+        - addUniqueConstraint:
+            tableName: users
+            columnNames: auth_user_id
+            constraintName: uk_users_auth_user_id

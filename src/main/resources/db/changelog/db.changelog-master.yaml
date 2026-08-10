@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changeset/003-create-audit.yaml
   - include:
       file: db/changelog/changeset/004-create-indexes.yaml
+  - include:
+      file: db/changelog/changeset/005-add-auth-user-id.yaml
