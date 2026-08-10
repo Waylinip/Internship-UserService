@@ -33,4 +33,6 @@ public interface UserRepo extends JpaRepository<User, Long>, JpaSpecificationExe
     @Query("UPDATE User u SET u.active = :active WHERE u.id = :id")
     int changeStatus(@Param("id") Long id, @Param("active") boolean active);
 
+    Optional<User> findByAuthUserId(Long authUserId);
+
 }

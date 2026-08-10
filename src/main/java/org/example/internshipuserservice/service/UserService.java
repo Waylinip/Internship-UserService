@@ -2,6 +2,7 @@ package org.example.internshipuserservice.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.internshipuserservice.dto.ProfileRequest;
 import org.example.internshipuserservice.dto.UserDTO;
 import org.example.internshipuserservice.dto.UserWithCardsDTO;
 import org.example.internshipuserservice.entity.User;
@@ -155,5 +156,22 @@ public class UserService {
                 });
 
         return userMapper.toDtoWithCards(user);
+    }
+
+    @Transactional
+    public UserDTO createFromRegistration(ProfileRequest request) {
+        return userRepo.findByAuthUserId(request.getAuthUserId())
+                .map(userMapper::toDto)
+                .orElseGet(() -> {
+                    User user = new User();
+                    user.setAuthUserId(request.getAuthUserId());
+                    user.setName(request.getName());
+                    user.setSurname(request.getSurname());
+                    user.setBirthdate(request.getBirthdate());
+                    user.setEmail(request.getEmail());
+                    user.setActive(true);
+
+                    return userMapper.toDto(userRepo.save(user));
+                });
     }
 }
