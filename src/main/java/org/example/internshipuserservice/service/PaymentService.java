@@ -15,6 +15,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +40,7 @@ public class PaymentService {
 
     @Transactional
     @CacheEvict(value = "userWithCards", key = "#result.userId")
-    public PaymentCardDTO create(PaymentCardDTO cardDTO) {
+    public PaymentCardDTO create(PaymentCardDTO cardDTO, Long authUserId, boolean isAdmin) {
         if (cardDTO == null) {
             log.warn("cardDTO is null");
             throw new IllegalArgumentException(CARD_DTO_EXCEPTION);
@@ -51,17 +52,22 @@ public class PaymentService {
 
         log.info("creating card for user {}", cardDTO.getUserId());
 
-        long count = paymentCardRepo.countCards(cardDTO.getUserId());
-        if (count >= 5) {
-            log.warn("user {} already has 5 cards", cardDTO.getUserId());
-            throw new CardLimitExceededException("User with id " + cardDTO.getUserId() + " already has 5 payment cards");
-        }
-
         User user = userRepo.findById(cardDTO.getUserId())
                 .orElseThrow(() -> {
                     log.warn("user {} not found", cardDTO.getUserId());
                     return new NotFoundException(USER_NOT_FOUND + cardDTO.getUserId());
                 });
+
+        if (!isAdmin && !user.getAuthUserId().equals(authUserId)) {
+            log.warn("authUserId {} tried to create card for another user {}", authUserId, cardDTO.getUserId());
+            throw new AccessDeniedException("You can only create cards for yourself");
+        }
+
+        long count = paymentCardRepo.countCards(cardDTO.getUserId());
+        if (count >= 5) {
+            log.warn("user {} already has 5 cards", cardDTO.getUserId());
+            throw new CardLimitExceededException("User with id " + cardDTO.getUserId() + " already has 5 payment cards");
+        }
 
         if (paymentCardRepo.existsByNumber(cardDTO.getNumber())) {
             log.warn("card number already exists");
@@ -129,33 +135,34 @@ public class PaymentService {
 
     @Transactional
     @CacheEvict(value = "userWithCards", key = "#result.userId")
-    public PaymentCardDTO delete(Long id) {
+    public PaymentCardDTO delete(Long id, Long authUserId, boolean isAdmin) {
         if (id == null) {
-            log.warn("card id is null");
             throw new IllegalArgumentException(CARD_ID_EXCEPTION);
         }
 
-        PaymentCard paymentCard = paymentCardRepo.findById(id)
+        PaymentCard card = paymentCardRepo.findById(id)
                 .orElseThrow(() -> {
                     log.warn("card {} not found", id);
                     return new NotFoundException(CARD_NOT_FOUND + id);
                 });
 
-        paymentCardRepo.delete(paymentCard);
+        if (!isAdmin && !card.getUser().getAuthUserId().equals(authUserId)) {
+            log.warn("authUserId {} tried to delete card {} owned by another user", authUserId, id);
+            throw new AccessDeniedException("You don't have access to this card");
+        }
 
+        paymentCardRepo.delete(card);
         log.info("card {} deleted", id);
-        return cardMapper.toDTO(paymentCard);
+        return cardMapper.toDTO(card);
     }
 
     @Transactional
     @CacheEvict(value = "userWithCards", key = "#result.userId")
-    public PaymentCardDTO update(Long id, PaymentCardDTO cardDTO) {
+    public PaymentCardDTO update(Long id, PaymentCardDTO cardDTO, Long authUserId, boolean isAdmin) {
         if (id == null) {
-            log.warn("card id is null");
             throw new IllegalArgumentException(CARD_ID_EXCEPTION);
         }
         if (cardDTO == null) {
-            log.warn("cardDTO is null, id={}", id);
             throw new IllegalArgumentException(CARD_DTO_EXCEPTION);
         }
 
@@ -165,12 +172,23 @@ public class PaymentService {
                     return new NotFoundException(CARD_NOT_FOUND + id);
                 });
 
+        if (!isAdmin && !card.getUser().getAuthUserId().equals(authUserId)) {
+            log.warn("authUserId {} tried to update card {} owned by another user", authUserId, id);
+            throw new AccessDeniedException("You don't have access to this card");
+        }
+
         log.info("updating card {}", id);
         card.setNumber(cardDTO.getNumber());
         card.setHolder(cardDTO.getHolder());
         card.setExpirationDate(cardDTO.getExpirationDate());
         paymentCardRepo.save(card);
         return cardMapper.toDTO(card);
+    }
+
+    public List<PaymentCardDTO> findMyCards(Long authUserId) {
+        User user = userRepo.findByAuthUserId(authUserId)
+                .orElseThrow(() -> new NotFoundException("User not found for authUserId: " + authUserId));
+        return findAllByUserId(user.getId());
     }
 
 }
