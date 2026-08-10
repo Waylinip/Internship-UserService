@@ -15,6 +15,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -105,7 +106,7 @@ public class UserService {
 
     @Transactional
     @CacheEvict(value = "userWithCards", key = "#id")
-    public UserDTO deleteUser(Long id) {
+    public UserDTO deleteUser(Long id, Long authUserId, boolean isAdmin) {
         if (id == null) {
             log.warn("user id is null");
             throw new IllegalArgumentException(USER_ID_EXCEPTION);
@@ -115,6 +116,12 @@ public class UserService {
                     log.warn("user {} not found", id);
                     return new NotFoundException(USER_NOT_FOUND + id);
                 });
+
+        if (!isAdmin && !user.getAuthUserId().equals(authUserId)) {
+            log.warn("authUserId {} tried to delete user {} owned by another account", authUserId, id);
+            throw new AccessDeniedException("You don't have access to this profile");
+        }
+
         userRepo.delete(user);
         log.info("user {} deleted", id);
         return userMapper.toDto(user);
@@ -122,12 +129,11 @@ public class UserService {
 
     @Transactional
     @CacheEvict(value = "userWithCards", key = "#id")
-    public UserDTO updateUser(Long id, UserDTO userDTO) {
+    public UserDTO updateUser(Long id, UserDTO userDTO, Long authUserId, boolean isAdmin) {
         if (id == null) {
             log.warn("user id is null");
             throw new IllegalArgumentException(USER_ID_EXCEPTION);
         }
-
         if (userDTO == null) {
             log.warn("userDTO is null, id={}", id);
             throw new IllegalArgumentException(USER_DTO_EXCEPTION);
@@ -137,6 +143,11 @@ public class UserService {
                     log.warn("user {} not found", id);
                     return new NotFoundException(USER_NOT_FOUND + id);
                 });
+
+        if (!isAdmin && !user.getAuthUserId().equals(authUserId)) {
+            log.warn("authUserId {} tried to update user {} owned by another account", authUserId, id);
+            throw new AccessDeniedException("You don't have access to this profile");
+        }
 
         log.info("updating user {}", id);
         user.setName(userDTO.getName());
@@ -173,5 +184,12 @@ public class UserService {
 
                     return userMapper.toDto(userRepo.save(user));
                 });
+    }
+
+    @Cacheable(value = "userWithCards", key = "#id")
+    public UserDTO getByAuthUserId(Long authUserId) {
+        log.debug("fetching user by authUserId {}", authUserId);
+        return userMapper.toDto(userRepo.findByAuthUserId(authUserId)
+                .orElseThrow(() -> new NotFoundException("User not found for authUserId: " + authUserId)));
     }
 }
