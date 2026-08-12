@@ -29,4 +29,15 @@ public class InternalUserController {
         return ResponseEntity.ok(userDTO);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<UserDTO> findById(@PathVariable Long id) {
+        UserDTO userDTO = userService.getById(id);
+        return ResponseEntity.ok(userDTO);
+    }
+
+    @GetMapping("/auth/{authUserId}")
+    public ResponseEntity<UserDTO> findByAuthUserId(@PathVariable Long authUserId) {
+        return ResponseEntity.ok(userService.getByAuthUserId(authUserId));
+    }
+
 }
