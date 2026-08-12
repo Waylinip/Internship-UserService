@@ -186,7 +186,7 @@ public class UserService {
                 });
     }
 
-    @Cacheable(value = "userWithCards", key = "#id")
+    @Cacheable(value = "userWithCards", key = "#authUserId")
     public UserDTO getByAuthUserId(Long authUserId) {
         log.debug("fetching user by authUserId {}", authUserId);
         return userMapper.toDto(userRepo.findByAuthUserId(authUserId)
