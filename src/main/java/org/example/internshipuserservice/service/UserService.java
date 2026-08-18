@@ -93,7 +93,7 @@ public class UserService {
         }
 
         log.info("user {} status -> {}", id, active);
-        int updated = userRepo.changeStatus(id,active);
+        int updated = userRepo.changeStatus(id, active);
         if (updated == 0) {
             log.warn("user {} not found", id);
             throw new NotFoundException(USER_NOT_FOUND + id);
@@ -184,6 +184,14 @@ public class UserService {
 
                     return userMapper.toDto(userRepo.save(user));
                 });
+    }
+
+    @Transactional
+    public void rollbackRegistration(Long authUserId) {
+        userRepo.findByAuthUserId(authUserId)
+                .ifPresent(user -> {
+                    log.info("Rolling back user profile for authUserId={}", authUserId);
+                    userRepo.delete(user);});
     }
 
     @Cacheable(value = "userWithCards", key = "#authUserId")

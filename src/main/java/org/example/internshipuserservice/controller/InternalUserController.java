@@ -40,4 +40,12 @@ public class InternalUserController {
         return ResponseEntity.ok(userService.getByAuthUserId(authUserId));
     }
 
+    @DeleteMapping("/{authUserId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void rollbackRegistration(
+            @PathVariable Long authUserId) {
+
+        userService.rollbackRegistration(authUserId);
+    }
+
 }
