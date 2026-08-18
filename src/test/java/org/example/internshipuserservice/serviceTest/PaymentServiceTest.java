@@ -1,6 +1,7 @@
 package org.example.internshipuserservice.serviceTest;
 
 import org.example.internshipuserservice.dto.PaymentCardDTO;
+import org.example.internshipuserservice.entity.User;
 import org.example.internshipuserservice.exception.CardLimitExceededException;
 import org.example.internshipuserservice.exception.NotFoundException;
 import org.example.internshipuserservice.mapper.PaymentCardMapper;
@@ -12,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
@@ -40,9 +43,14 @@ public class PaymentServiceTest {
         PaymentCardDTO cardDTO = new PaymentCardDTO();
         cardDTO.setUserId(1L);
 
+        User user = new User();
+        user.setId(1L);
+        user.setAuthUserId(1L);
+        when(userRepo.findById(1L)).thenReturn(Optional.of(user));
         when(paymentCardRepo.countCards(1L)).thenReturn(5L);
 
-        assertThrows(CardLimitExceededException.class, () -> paymentService.create(cardDTO));
+        assertThrows(CardLimitExceededException.class, () -> paymentService.create(cardDTO, 1L, false));
+
         verify(paymentCardRepo, never()).save(any());
     }
 
