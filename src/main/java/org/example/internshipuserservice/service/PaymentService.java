@@ -40,34 +40,49 @@ public class PaymentService {
 
     @Transactional
     @CacheEvict(value = "userWithCards", key = "#result.userId")
+
     public PaymentCardDTO create(PaymentCardDTO cardDTO, Long authUserId, boolean isAdmin) {
+
         if (cardDTO == null) {
             log.warn("cardDTO is null");
             throw new IllegalArgumentException(CARD_DTO_EXCEPTION);
         }
-        if (cardDTO.getUserId() == null) {
-            log.warn("userId is null");
-            throw new IllegalArgumentException(USER_ID_EXCEPTION);
+        Long userId;
+        if (isAdmin) {
+            if (cardDTO.getUserId() == null) {
+                log.warn("admin tried to create card without userId");
+                throw new IllegalArgumentException(USER_ID_EXCEPTION);
+            }
+            userId = cardDTO.getUserId();
+        } else {
+            User currentUser = userRepo.findByAuthUserId(authUserId)
+                    .orElseThrow(() -> {
+                        log.warn("user with authUserId {} not found", authUserId);
+                        return new NotFoundException(
+                                "User not found for authUserId: " + authUserId
+                        );
+                    });
+
+            userId = currentUser.getId();
         }
 
-        log.info("creating card for user {}", cardDTO.getUserId());
-
-        User user = userRepo.findById(cardDTO.getUserId())
+        log.info("creating card for user {}", userId);
+        User user = userRepo.findById(userId)
                 .orElseThrow(() -> {
-                    log.warn("user {} not found", cardDTO.getUserId());
-                    return new NotFoundException(USER_NOT_FOUND + cardDTO.getUserId());
+                    log.warn("user {} not found", userId);
+                    return new NotFoundException(USER_NOT_FOUND + userId);
                 });
 
-        if (!isAdmin && !user.getAuthUserId().equals(authUserId)) {
-            log.warn("authUserId {} tried to create card for another user {}", authUserId, cardDTO.getUserId());
-            throw new AccessDeniedException("You can only create cards for yourself");
+
+        long count = paymentCardRepo.countCards(userId);
+
+        if (count >= 5) {
+            log.warn("user {} already has 5 cards", userId);
+            throw new CardLimitExceededException(
+                    "User with id " + userId + " already has 5 payment cards"
+            );
         }
 
-        long count = paymentCardRepo.countCards(cardDTO.getUserId());
-        if (count >= 5) {
-            log.warn("user {} already has 5 cards", cardDTO.getUserId());
-            throw new CardLimitExceededException("User with id " + cardDTO.getUserId() + " already has 5 payment cards");
-        }
 
         if (paymentCardRepo.existsByNumber(cardDTO.getNumber())) {
             log.warn("card number already exists");
@@ -76,10 +91,12 @@ public class PaymentService {
 
 
         PaymentCard card = cardMapper.toEntity(cardDTO);
+
         card.setUser(user);
 
         PaymentCard savedCard = paymentCardRepo.save(card);
-        log.info("card {} created for user {}", savedCard.getId(), cardDTO.getUserId());
+
+        log.info("card {} created for user {}", savedCard.getId(), userId);
         return cardMapper.toDTO(savedCard);
     }
 
