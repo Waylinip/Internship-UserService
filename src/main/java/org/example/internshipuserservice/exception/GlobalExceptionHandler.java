@@ -3,6 +3,7 @@ package org.example.internshipuserservice.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -60,5 +61,8 @@ public class GlobalExceptionHandler  {
         log.error("Unexpected error occurred", exception);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, MESSAGE_FOR_UNEXPECTED_ERROR);
     }
-
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Object> handleAccessDenied(AccessDeniedException exception) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Access denied");
+    }
 }
